@@ -15,7 +15,12 @@ If you use or extend our work, please cite our paper at NAACL 2021.
       Chen, Guimin  and
       Song, Yan",
     booktitle = "Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies",
-    year = "2021"}
+    month = jun,
+    year = "2021",
+    address = "Online",
+    publisher = "Association for Computational Linguistics",
+    pages = "2910--2922"
+}
 ```
 
 ## Requirements
