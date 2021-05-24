@@ -1,0 +1,44 @@
+0	1	ROOT
+3	2	advmod
+4	3	amod
+1	4	dobj
+1	5	punct
+
+0	4	ROOT
+4	1	neg
+4	2	det
+4	3	amod
+4	5	cc
+4	6	conj
+4	7	punct
+
+0	7	ROOT
+4	1	amod
+4	2	compound
+4	3	amod
+7	4	nsubj
+7	5	cop
+7	6	det
+7	8	punct
+
+0	5	ROOT
+5	1	dep
+5	2	nsubj
+5	3	aux
+5	4	neg
+5	6	xcomp
+9	7	case
+9	8	det
+6	9	nmod
+5	10	punct
+
+0	2	ROOT
+2	1	nsubj
+4	3	amod
+2	4	dobj
+4	5	cc
+8	6	advmod
+8	7	amod
+4	8	conj
+2	9	punct
+
