@@ -2,7 +2,7 @@
 
 This is the implementation of [Aspect-based Sentiment Analysis withType-aware Graph Convolutional Networks and Layer Ensemble](https://www.aclweb.org/anthology/2021.naacl-main.231/) at NAACL 2021.
 
-You can e-mail Guimin Chen at `chenguimin@foxmail.com` or `cuhksz.nlp@gmail.com`, if you have any questions.
+You can e-mail Guimin Chen at `chenguimin@foxmail.com` or `cuhksz.nlp@gmail.com` or Yuanhe Tian at `yhtian@uw.edu`, if you have any questions.
 
 ## Citation
 
