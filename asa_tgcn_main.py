@@ -6,6 +6,7 @@ import sys
 from time import strftime, localtime
 import random
 import numpy as np
+import subprocess
 
 from pytorch_transformers import BertModel, BertConfig
 from data_utils import Tokenizer4Bert, ABSADataset
@@ -36,14 +37,14 @@ class Instructor:
         self.deptype2id = deptype2id
         self.polarity2id = polarity2id
 
+        self.vocab_path = os.path.join(opt.bert_model, 'vocab.txt')
         self.tokenizer = Tokenizer4Bert(opt.max_seq_len, opt.bert_model)
-        config = BertConfig.from_json_file(os.path.join(opt.model_path, CONFIG_NAME))
+        config = BertConfig.from_json_file(os.path.join(opt.bert_model, CONFIG_NAME))
         config.num_labels=opt.polarities_dim
         config.num_types=len(self.deptype2id)
         logger.info(config)
         self.model = AsaTgcn.from_pretrained(opt.bert_model, config=config)
         self.model.to(opt.device)
-
 
         self.trainset = ABSADataset(opt.train_file, self.tokenizer, self.opt, deptype2id=deptype2id)
         self.testset = ABSADataset(opt.test_file, self.tokenizer, self.opt, deptype2id=deptype2id)
@@ -97,11 +98,14 @@ class Instructor:
             writer.write(config.to_json_string())
         output_args_file = os.path.join(save_path, 'training_args.bin')
         torch.save(args, output_args_file)
+        subprocess.run(['cp', self.vocab_path, os.path.join(save_path, 'vocab.txt')])
 
     def _train(self, criterion, optimizer, train_data_loader, val_data_loader, test_data_loader):
-        max_val_acc = 0
+        max_val_acc = -1
         global_step = 0
         path = None
+
+        model_home = self.opt.model_path + '-' + strftime("%y%m%d-%H%M", localtime())
 
         results = {"bert_model": self.opt.bert_model, "batch_size": self.opt.batch_size,
                    "learning_rate": self.opt.learning_rate, "seed": self.opt.seed}
@@ -133,7 +137,7 @@ class Instructor:
                 if global_step % self.opt.log_step == 0:
                     train_acc = n_correct / n_total
                     train_loss = loss_total / n_total
-                    logger.info('epoch: {}, loss: {:.4f}, acc: {:.4f}'.format(epoch, train_loss, train_acc))
+                    logger.info('epoch: {}, loss: {:.4f}, train acc: {:.4f}'.format(epoch, train_loss, train_acc))
             val_acc, val_f1 = Instructor._evaluate_acc_f1(self.model, val_data_loader, device=self.opt.device)
             logger.info('>epoch: {}, val_acc: {:.4f}, val_f1: {:.4f}'.format(epoch, val_acc, val_f1))
             results["{}_val_acc".format(epoch)] = val_acc
@@ -141,21 +145,22 @@ class Instructor:
 
             if val_acc > max_val_acc:
                 max_val_acc = val_acc
-                saving_path = os.path.join(self.opt.outdir, "epoch_{}".format(epoch))
+                saving_path = os.path.join(model_home, "epoch_{}".format(epoch))
                 if not os.path.exists(saving_path):
                     os.makedirs(saving_path)
                 self.save_model(saving_path, self.model, self.opt)
 
                 self.model.eval()
-                saving_path = os.path.join(self.opt.outdir, "epoch_{}_eval.txt".format(epoch))
-                test_acc, test_f1 = self._evaluate_acc_f1(self.model, test_data_loader, device=self.opt.device, saving_path=saving_path)
+                saving_path = os.path.join(model_home, "epoch_{}_eval.txt".format(epoch))
+                test_acc, test_f1 = self._evaluate_acc_f1(self.model, test_data_loader, device=self.opt.device,
+                                                          saving_path=saving_path)
                 logger.info('>> epoch: {}, test_acc: {:.4f}, test_f1: {:.4f}'.format(epoch, test_acc, test_f1))
 
                 results["max_val_acc"] = max_val_acc
                 results["test_acc"] = test_acc
                 results["test_f1"] = test_f1
 
-            output_eval_file = os.path.join(self.opt.outdir, "eval_results.txt")
+            output_eval_file = os.path.join(model_home, "eval_results.txt")
             with open(output_eval_file, "w") as writer:
                 for k,v in results.items():
                     writer.write("{}={}\n".format(k,v))
@@ -215,6 +220,7 @@ class Instructor:
         self._reset_params()
         self._train(criterion, optimizer, train_data_loader, val_data_loader, test_data_loader)
 
+
 def test(opt):
     logger.info(opt)
     config = BertConfig.from_json_file(os.path.join(opt.model_path, CONFIG_NAME))
@@ -223,7 +229,6 @@ def test(opt):
     tokenizer = Tokenizer4Bert(opt.max_seq_len, opt.model_path)
     model = AsaTgcn.from_pretrained(opt.model_path)
     model.to(opt.device)
-
 
     deptype2id = config.deptype2id
     logger.info(deptype2id)
@@ -236,13 +241,12 @@ def test(opt):
 def get_args():
     # Hyper Parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', default='tgcn', type=str)
     parser.add_argument('--train_file', default='sample_data/train.txt', type=str)
     parser.add_argument('--test_file', default='sample_data/test.txt', type=str)
     parser.add_argument('--val_file', default='sample_data/val.txt', type=str)
     parser.add_argument('--log', default='log', type=str)
     parser.add_argument('--bert_model', default='./bert-large-uncased', type=str)
-    parser.add_argument('--model_path', default='./bert-large-uncased', type=str)
+    parser.add_argument('--model_path', default='./models/tmp_model', type=str)
     parser.add_argument('--learning_rate', default='2e-5', type=float)
     parser.add_argument('--dropout', default=0, type=float)
     parser.add_argument('--bert_dropout', default=0.2, type=float)
@@ -255,25 +259,12 @@ def get_args():
     parser.add_argument('--device', default=None, type=str)
     parser.add_argument('--seed', default=50, type=int)
     parser.add_argument('--valset_ratio', default=0, type=float)
-    parser.add_argument('--outdir', default='./', type=str)
     parser.add_argument("--do_train", action='store_true', help="Whether to run training.")
     parser.add_argument("--do_eval", action='store_true', help="Whether to run eval on the dev set.")
     opt = parser.parse_args()
 
-    if opt.do_train:
-        opt.outdir = os.path.join(opt.outdir, "{}_{}_bts_{}_lr_{}_warmup_{}_seed_{}_bert_dropout_{}".format(
-            opt.tool,
-            opt.dataset,
-            opt.batch_size,
-            opt.learning_rate,
-            opt.warmup_proportion,
-            opt.seed,
-            opt.bert_dropout
-        ))
-        if not os.path.exists(opt.outdir):
-            os.mkdir(opt.outdir)
-
     return opt
+
 
 def set_seed(opt):
     if opt.seed is not None:
@@ -284,6 +275,7 @@ def set_seed(opt):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
+
 def main():
     opt = get_args()
     set_seed(opt)
@@ -292,7 +284,10 @@ def main():
         if opt.device is None else torch.device(opt.device)
     opt.n_gpu = torch.cuda.device_count()
 
-    log_file = '{}/{}-{}-{}.log'.format(opt.log, opt.model_name, opt.dataset, strftime("%y%m%d-%H%M", localtime()))
+    if not os.path.exists(opt.log):
+        os.makedirs(opt.log)
+
+    log_file = '{}/log-{}.log'.format(opt.log, strftime("%y%m%d-%H%M", localtime()))
     logger.addHandler(logging.FileHandler(log_file))
 
     if opt.do_train:
@@ -300,6 +295,7 @@ def main():
         ins.train()
     elif opt.do_eval:
         test(opt)
+
 
 if __name__ == '__main__':
     main()

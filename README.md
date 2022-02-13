@@ -41,13 +41,9 @@ For BERT, please download pre-trained BERT-Base and BERT-Large English from [Goo
 
 [comment]: <> (For ASA-TGCN, you can download the models we trained in our experiments from [Google Drive] or [Baidu Net Disk].)
 
-## Run on Sample Data
+## Training and Testing on Sample Data
 
 Run `run_sample.sh` to train a model on the small sample data under the `sample_data` directory.
-
-## Training and Testing
-
-You can find the command lines to train and test models in `run_train.sh` and `run_test.sh`, respectively.
 
 Here are some important parameters:
 

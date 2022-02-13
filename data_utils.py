@@ -1,5 +1,4 @@
 import os
-import pickle
 import copy
 import numpy as np
 import torch
@@ -137,12 +136,11 @@ class DepInstanceParser():
         return dep_path
 
 class ABSADataset(Dataset):
-    def __init__(self, datafile, tokenizer, opt, deptype2id = None, dep_order = "first"):
+    def __init__(self, datafile, tokenizer, opt, deptype2id=None, dep_order="first"):
         self.datafile = datafile
         self.depfile = "{}.dep".format(datafile)
         self.tokenizer = tokenizer
         self.opt = opt
-        self.dep_order = opt.dep_order
         self.deptype2id = deptype2id
         self.dep_order = dep_order
         self.textdata = ABSADataset.load_datafile(self.datafile)
@@ -199,6 +197,8 @@ class ABSADataset(Dataset):
             dep_adj_matrix, dep_type_matrix = dep_instance_parser.get_second_order()
         elif self.dep_order == "third":
             dep_adj_matrix, dep_type_matrix = dep_instance_parser.get_third_order()
+        else:
+            raise ValueError()
 
         token_head_list = []
         for input_id, valid_id in zip(input_ids, valid_ids):
@@ -209,19 +209,23 @@ class ABSADataset(Dataset):
             if valid_id == 1:
                 token_head_list.append(input_id)
 
-        final_dep_adj_matrix = [[0]*self.max_key_len for _ in range(self.tokenizer.max_seq_len)]
-        final_dep_value_matrix = [[0]*self.max_key_len for _ in range(self.tokenizer.max_seq_len)]
-        for i in range(len(token_head_list)):
-            for j in range(len(dep_adj_matrix[i])):
-                if j >= self.max_key_len:
-                    break
-                final_dep_adj_matrix[i+1][j] = dep_adj_matrix[i][j]
-                final_dep_value_matrix[i+1][j] = self.deptype2id[dep_type_matrix[i][j]]
-
         input_ids = self.tokenizer.id_to_sequence(input_ids)
         valid_ids = self.tokenizer.id_to_sequence(valid_ids)
         segment_ids = self.tokenizer.id_to_sequence(segment_ids)
         mem_valid_ids = self.tokenizer.id_to_sequence(mem_valid_ids)
+
+        size = input_ids.shape[0]
+
+        # final_dep_adj_matrix = [[0] * size for _ in range(self.tokenizer.max_seq_len)]
+        # final_dep_value_matrix = [[0] * size for _ in range(self.tokenizer.max_seq_len)]
+        final_dep_adj_matrix = [[0] * size for _ in range(size)]
+        final_dep_value_matrix = [[0] * size for _ in range(size)]
+        for i in range(len(token_head_list)):
+            for j in range(len(dep_adj_matrix[i])):
+                if j >= size:
+                    break
+                final_dep_adj_matrix[i+1][j] = dep_adj_matrix[i][j]
+                final_dep_value_matrix[i+1][j] = self.deptype2id[dep_type_matrix[i][j]]
 
         return {
             "input_ids":torch.tensor(input_ids),

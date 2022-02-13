@@ -33,11 +33,12 @@ class TypeGraphConvolution(nn.Module):
     """
     Simple GCN layer
     """
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, embedding_dim, bias=True):
         super(TypeGraphConvolution, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.weight = nn.Parameter(torch.FloatTensor(in_features, out_features))
+        self.dense = nn.Linear(embedding_dim, in_features, bias=False)
         if bias:
             self.bias = nn.Parameter(torch.FloatTensor(out_features))
         else:
@@ -47,7 +48,7 @@ class TypeGraphConvolution(nn.Module):
         batch_size, max_len, feat_dim = text.shape
         val_us = text.unsqueeze(dim=2)
         val_us = val_us.repeat(1, 1, max_len, 1)
-        val_sum = val_us + dep_embed
+        val_sum = val_us + self.dense(dep_embed)
         adj_us = adj.unsqueeze(dim=-1)
         adj_us = adj_us.repeat(1, 1, 1, feat_dim)
         hidden = torch.matmul(val_sum, self.weight)
@@ -61,24 +62,22 @@ class TypeGraphConvolution(nn.Module):
             return output
 
 
-
 class AsaTgcn(BertPreTrainedModel):
     def __init__(self, config):
-        super(AsaTgcn, self).__init__()
+        super(AsaTgcn, self).__init__(config)
         self.config = config
         self.layer_number = 3
         self.num_labels = config.num_labels
         self.num_types = config.num_types
 
         self.bert = BertModel(config)
-        self.TGCNLayers = nn.ModuleList(([TypeGraphConvolution(config.hidden_size, config.hidden_size)
+        self.TGCNLayers = nn.ModuleList(([TypeGraphConvolution(config.hidden_size, config.hidden_size, config.hidden_size)
                                          for _ in range(self.layer_number)]))
         self.fc_single = nn.Linear(config.hidden_size, self.num_labels)
-        self.dropout = nn.Dropout(config.bert_dropout)
+        self.dropout = nn.Dropout(0.1)
         self.ensemble_linear = nn.Linear(1,3)
         self.ensemble = nn.Parameter(torch.FloatTensor(3, 1))
         self.dep_embedding = nn.Embedding(self.num_types, config.hidden_size, padding_idx=0)
-
 
     def get_attention(self, val_out, dep_embed, adj):
         batch_size, max_len, feat_dim = val_out.shape
