@@ -2,7 +2,7 @@
 
 This is the implementation of [Aspect-based Sentiment Analysis withType-aware Graph Convolutional Networks and Layer Ensemble](https://www.aclweb.org/anthology/2021.naacl-main.231/) at NAACL 2021.
 
-You can e-mail Guimin Chen at `chenguimin@foxmail.com` or `cuhksz.nlp@gmail.com` or Yuanhe Tian at `yhtian@uw.edu`, if you have any questions.
+You can e-mail Yuanhe Tian at `yhtian@uw.edu`, if you have any questions.
 
 ## Citation
 
@@ -11,9 +11,7 @@ If you use or extend our work, please cite our paper at NAACL 2021.
 ```
 @inproceedings{tian-etal-2021-aspect,
     title = "Aspect-based Sentiment Analysis with Type-aware Graph Convolutional Networks and Layer Ensemble",
-    author = "Tian, Yuanhe  and
-      Chen, Guimin  and
-      Song, Yan",
+    author = "Tian, Yuanhe and Chen, Guimin and Song, Yan",
     booktitle = "Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies",
     month = jun,
     year = "2021",
